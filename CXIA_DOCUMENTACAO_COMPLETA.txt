@@ -1,0 +1,973 @@
+================================================================================
+                    DOCUMENTAÇÃO TÉCNICA DEFINITIVA
+                    SISTEMA DE BANCO DE DADOS CXIA
+                    Backend Auto-Hospedado em Python + SQLite
+================================================================================
+
+VERSÃO DO DOCUMENTO: 1.0.0
+DATA DE EMISSÃO: 2025
+AUTORIA: Engenharia de Software Sênior - Projeto CxIA
+STATUS: PRODUÇÃO PRONTA (PRODUCTION READY)
+
+================================================================================
+                              ÍNDICE GERAL
+================================================================================
+
+1. INTRODUÇÃO E VISÃO GERAL
+   1.1. O que é o Sistema CxIA DB?
+   1.2. Problema Resolvido
+   1.3. Filosofia de Design: "Soberania de Dados"
+   1.4. Comparativo: Supabase vs. CxIA Local
+
+2. ARQUITETURA DO SISTEMA
+   2.1. Diagrama de Fluxo de Dados
+   2.2. Stack Tecnológico
+   2.3. Topologia de Rede
+   2.4. Modelo de Implantação (Deployment)
+
+3. ESTRUTURA DE DIRETÓRIOS E ARQUIVOS
+   3.1. Árvore Completa do Projeto
+   3.2. Descrição Detalhada de Cada Arquivo
+   3.3. Dependências e Requisitos
+
+4. MODELAGEM DE DADOS (SCHEMA)
+   4.1. Visão Geral do Banco de Dados
+   4.2. Tabela: usuarios
+   4.3. Tabela: conversas
+   4.4. Tabela: mensagens
+   4.5. Tabela: tokens_usuarios
+   4.6. Tabela: sessoes
+   4.7. Índices e Performance
+   4.8. Integridade Referencial (Foreign Keys)
+
+5. API RESTFUL - ESPECIFICAÇÃO COMPLETA
+   5.1. Padrões de Comunicação
+   5.2. Endpoints de Autenticação (/auth)
+   5.3. Endpoints de Conversas (/conversas)
+   5.4. Endpoints de Mensagens (/mensagens)
+   5.5. Endpoints de Tokens (/tokens)
+   5.6. Endpoints de Sistema (/health)
+   5.7. Códigos de Status HTTP e Erros
+
+6. SEGURANÇA E AUTENTICAÇÃO
+   6.1. Hashing de Senhas (SHA-256 + Salt)
+   6.2. JSON Web Tokens (JWT)
+   6.3. Gestão de Sessões
+   6.4. CORS (Cross-Origin Resource Sharing)
+   6.5. Prevenção contra SQL Injection
+   6.6. Proteção contra Race Conditions
+
+7. SISTEMA DE TOKENS E LIMITAÇÃO DE USO
+   7.1. Conceito de Janela Deslizante (Sliding Window)
+   7.2. Lógica de Consumo Atômico
+   7.3. Planos: Free vs. Pro
+   7.4. Reset Automático de Cotas
+   7.5. Exemplos de Cálculo de Tokens
+
+8. INTEGRAÇÃO COM FRONTEND (REACT + TYPESCRIPT)
+   8.1. Biblioteca dbClient.ts
+   8.2. Configuração de Variáveis de Ambiente
+   8.3. Substituição do LocalStorage
+   8.4. Tratamento de Erros e Offline
+   8.5. Exemplos de Uso nos Hooks
+
+9. GUIA DE IMPLANTAÇÃO (DEPLOYMENT)
+   9.1. Pré-requisitos de Hardware e Software
+   9.2. Instalação Passo a Passo (Windows/Linux/Mac)
+   9.3. Configuração de Rede e Firewall
+   9.4. Exposição Segura para a Internet (Tunneling)
+   9.5. Execução como Serviço (Systemd / NSSM)
+
+10. MANUTENÇÃO E OPERAÇÕES
+    10.1. Backup e Restauração do Banco de Dados
+    10.2. Logs e Monitoramento
+    10.3. Otimização de Performance (WAL Mode)
+    10.4. Limpeza de Dados Antigos
+    10.5. Atualização de Versão
+
+11. SOLUÇÃO DE PROBLEMAS (TROUBLESHOOTING)
+    11.1. Erros Comuns de Conexão
+    11.2. Problemas de Permissão de Arquivo
+    11.3. Debug de JWT Inválido
+    11.4. Conflitos de Porta
+
+12. PERGUNTAS FREQUENTES (FAQ)
+13. APÊNDICE: CÓDIGO DE REFERÊNCIA RÁPIDA
+14. TERMOS DE USO E LICENCIAMENTO
+
+================================================================================
+1. INTRODUÇÃO E VISÃO GERAL
+================================================================================
+
+1.1. O QUE É O SISTEMA CXIA DB?
+
+O CxIA DB é uma implementação completa de backend "self-hosted" (auto-hospedado) 
+desenvolvida em Python puro, utilizando o framework FastAPI e o banco de dados 
+SQLite. Ele foi projetado especificamente para alimentar aplicações SaaS (Software 
+as a Service) que necessitam de persistência de dados real, sem depender de 
+serviços de nuvem pagos ou complexos.
+
+Diferente de soluções tradicionais que exigem servidores PostgreSQL dedicados, 
+configurações de Docker complexas ou assinaturas mensais (como Supabase, Firebase 
+ou AWS), o CxIA DB roda diretamente no sistema operacional do administrador, 
+utilizando um único arquivo (.db) para armazenar todos os dados da aplicação.
+
+1.2. PROBLEMA RESOLVIDO
+
+Aplicações modernas frequentemente enfrentam o dilema da persistência de dados:
+- Opção A: Usar localStorage no navegador.
+  * Problema: Os dados somem se o usuário limpar o cache, trocar de dispositivo 
+    ou usar aba anônima. Não há sincronização entre dispositivos.
+  
+- Opção B: Usar serviços de nuvem (Supabase, Firebase).
+  * Problema: Custos recorrentes que escalam com o uso, dependência de internet 
+    estável para configuração, vendor lock-in (dificuldade de migrar depois) e 
+    preocupações com privacidade de dados (dados hospedados em servidores de 
+    terceiros).
+
+O CxIA DB resolve isso oferecendo uma "Nuvem Pessoal". Você, administrador, 
+transforma seu próprio computador (ou um servidor dedicado simples) no provedor 
+de dados. O frontend da aplicação (hospedado na Vercel, Netlify, etc.) conecta-se 
+via URL configurável ao seu backend local.
+
+1.3. FILOSOFIA DE DESIGN: "SOBERANIA DE DADOS"
+
+O sistema foi construído sobre três pilares fundamentais:
+
+1. Zero Custo de Infraestrutura:
+   Utiliza apenas software livre e nativo. Não há mensalidades de banco de dados.
+   O único custo é a eletricidade do equipamento onde o backend está rodando.
+
+2. Controle Total:
+   O arquivo `cxia.db` pertence a você. Ninguém mais tem acesso aos dados dos 
+   seus usuários a menos que você conceda. Você pode fazer backup copiando um 
+   único arquivo. Você pode inspecionar as tabelas com qualquer visualizador SQLite.
+
+3. Simplicidade Radical:
+   Sem Docker, sem Kubernetes, sem variáveis de ambiente complexas de cloud.
+   Para instalar: instale Python, rode `pip install -r requirements.txt` e execute 
+   `python main.py`. Para fazer backup: copie o arquivo `.db`.
+
+1.4. COMPARATIVO: SUPABASE VS. CXIA LOCAL
+
++----------------------+---------------------------+---------------------------+
+| Característica       | Supabase (Cloud)          | CxIA DB (Local)           |
++----------------------+---------------------------+---------------------------+
+| Custo Mensal         | Grátis até certo limite,  | R$ 0,00 (Ilimitado*)      |
+|                      | depois pago por uso.      | (*custo de energia)       |
++----------------------+---------------------------+---------------------------+
+| Configuração         | Dashboard web, chaves API | Arquivo .env local        |
++----------------------+---------------------------+---------------------------+
+| Persistência         | Nuvem (AWS/Google)        | Arquivo local (.db)       |
++----------------------+---------------------------+---------------------------+
+| Privacidade          | Dados em servidor terceiro| Dados na sua máquina      |
++----------------------+---------------------------+---------------------------+
+| Escalabilidade       | Automática (Auto-scale)   | Limitada pelo hardware    |
+|                      |                           | local (CPU/RAM/Disk I/O)  |
++----------------------+---------------------------+---------------------------+
+| Complexidade         | Média/Alta                | Baixa                     |
++----------------------+---------------------------+---------------------------+
+| Dependência Externa  | Alta (Internet obrigatória)| Baixa (Só pra acessar)    |
++----------------------+---------------------------+---------------------------+
+
+*Nota: O CxIA DB é ideal para projetos em estágio inicial, MVPs, ferramentas 
+internas, ou aplicações com tráfego moderado onde o custo de cloud não se justifica.*
+
+================================================================================
+2. ARQUITETURA DO SISTEMA
+================================================================================
+
+2.1. DIAGRAMA DE FLUXO DE DADOS
+
+[Usuário Final] <--(HTTPS)--> [Frontend React (Vercel/Netlify)]
+                                      |
+                                      | (HTTP/HTTPS)
+                                      | Chama API REST
+                                      v
+[Administrador] <== [Backend Python (FastAPI)] <== [Arquivo cxia.db]
+(Roda 24h no PC)    (Porta 8000)                   (SQLite Local)
+                      |
+                      +-- Valida JWT
+                      +-- Hash de Senha
+                      +-- Lógica de Tokens
+                      +-- Transações Atômicas
+
+2.2. STACK TECNOLÓGICO
+
+- Linguagem Backend: Python 3.9+
+- Framework Web: FastAPI (Alta performance, assíncrono, geração automática de docs)
+- Banco de Dados: SQLite 3 (Nativo do Python, sem instalação extra)
+- Autenticação: PyJWT (JSON Web Tokens)
+- Hashing: hashlib (SHA-256) + hmac
+- Servidor ASGI: Uvicorn (Embutido no FastAPI)
+- Frontend: React + TypeScript + Vite
+- Cliente HTTP: Fetch API nativa do navegador
+
+2.3. TOPOLOGIA DE REDE
+
+O sistema opera em um modelo Cliente-Servidor tradicional, mas com uma twist de 
+implantação flexível:
+
+Cenário A: Desenvolvimento Local
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8000
+- Comunicação: Loopback local (rápido, sem latência).
+
+Cenário B: Produção Híbrida (Recomendado)
+- Frontend: https://meu-saas.vercel.app (Hospedado na Vercel)
+- Backend: http://SEU_IP_PUBLICO:8000 (Seu PC com IP Fixo ou DDNS)
+- Segurança: Requer túnel HTTPS (ex: Cloudflare Tunnel, Ngrok) ou configuração 
+  correta de firewall e SSL reverso (Nginx/Caddy).
+
+2.4. MODELO DE IMPLANTAÇÃO (DEPLOYMENT)
+
+O backend é desenhado para ser "Stateless" em relação à lógica, mas "Stateful" 
+em relação aos dados (que ficam no disco).
+
+1. O script `main.py` inicializa o servidor Uvicorn.
+2. Ao receber requisições, o FastAPI roteia para os controllers apropriados.
+3. Os controllers abrem conexões com o SQLite usando um pool gerenciado.
+4. As operações de leitura/escrita são feitas com transações explícitas.
+5. A resposta é serializada em JSON e enviada de volta ao cliente.
+
+O modo WAL (Write-Ahead Logging) do SQLite é ativado por padrão, permitindo 
+múltiplas leituras concorrentes enquanto uma escrita ocorre, essencial para 
+ambientes web com múltiplos usuários simultâneos.
+
+================================================================================
+3. ESTRUTURA DE DIRETÓRIOS E ARQUIVOS
+================================================================================
+
+3.1. ÁRVORE COMPLETA DO PROJETO
+
+backend/
+├── main.py                 # Ponto de entrada principal. Configura CORS, rotas e inicia o servidor.
+├── database.py             # Gerenciador de conexão SQLite. Configura PRAGMAs (WAL, Foreign Keys).
+├── models.py               # Definição das tabelas (SQL DDL). Executa criação automática.
+├── schemas.py              # Modelos Pydantic para validação de entrada/saída de dados.
+├── requirements.txt        # Lista de dependências Python.
+├── start.bat               # Script Windows para iniciar o servidor.
+├── start.sh                # Script Linux/Mac para iniciar o servidor.
+│
+├── routers/                # Controladores de API (Endpoints)
+│   ├── auth.py             # Rotas de autenticação (registro, login, logout, me).
+│   ├── conversas.py        # Rotas de CRUD de conversas.
+│   ├── mensagens.py        # Rotas de CRUD de mensagens.
+│   └── tokens.py           # Rotas de gestão de quota de tokens.
+│
+├── services/               # Regras de Negócio (Lógica complexa)
+│   ├── auth_service.py     # Lógica de criação de usuários, validação de credenciais.
+│   └── token_service.py    # Lógica atômica de consumo e reset de tokens.
+│
+├── utils/                  # Utilitários Gerais
+│   ├── helpers.py          # Funções auxiliares (UUID, datetime, hash).
+│   └── jwt_utils.py        # Geração e validação de tokens JWT.
+│
+└── data/                   # Armazenamento Persistente
+    └── cxia.db             # O ARQUIVO DO BANCO DE DADOS. (Não apagar).
+
+3.2. DESCRIÇÃO DETALHADA DOS ARQUIVOS PRINCIPAIS
+
+- main.py:
+  Responsável por instanciar a aplicação FastAPI, configurar o middleware de CORS 
+  (permitindo que o frontend em outro domínio acesse a API), incluir os routers 
+  e iniciar o servidor Uvicorn. Também define a rota `/health` para monitoramento.
+
+- database.py:
+  Implementa o padrão de gerenciamento de conexão. Usa `contextlib` para garantir 
+  que as conexões sejam fechadas corretamente após o uso. Aplica configurações 
+  críticas de performance e integridade no SQLite (`journal_mode=WAL`, 
+  `foreign_keys=ON`).
+
+- models.py:
+  Contém o schema do banco de dados em formato SQL bruto. É executado na inicialização 
+  para garantir que todas as tabelas existam (`CREATE TABLE IF NOT EXISTS`). 
+  Define as chaves primárias, estrangeiras e restrições de verificação (CHECK).
+
+- schemas.py:
+  Define a estrutura de dados esperada nas requisições HTTP usando Pydantic. 
+  Garante que o frontend envie os campos corretos (ex: email válido, senha mínima) 
+  antes mesmo da lógica de negócio ser executada. Retorna erros 422 automáticos 
+  se a validação falhar.
+
+3.3. DEPENDÊNCIAS E REQUISITOS
+
+Arquivo `requirements.txt`:
+fastapi==0.109.0        # Framework web moderno e rápido
+uvicorn==0.27.0         # Servidor ASGI para rodar o FastAPI
+pyjwt==2.8.0            # Implementação de JSON Web Tokens
+bcrypt==4.1.2           # Hashing de senhas seguro (opcional, usamos SHA256 nativo mas bcrypt é mais forte)
+python-multipart==0.0.6 # Suporte a formulários e uploads
+
+Instalação:
+pip install -r requirements.txt
+
+================================================================================
+4. MODELAGEM DE DADOS (SCHEMA)
+================================================================================
+
+4.1. VISÃO GERAL
+
+O banco de dados é relacional, consistindo em 5 tabelas principais interligadas 
+por chaves estrangeiras. O design foca na integridade dos dados e na eficiência 
+de consultas frequentes (listar conversas, buscar mensagens).
+
+4.2. TABELA: usuarios
+
+Armazena a identidade digital dos usuários.
+
+Campos:
+- id (TEXT, PK): UUID gerado no backend. Único e imutável.
+- nome (TEXT): Nome de exibição do usuário.
+- email (TEXT, UNIQUE): Identificador único para login. Indexado.
+- senha_hash (TEXT): Hash da senha. Nunca armazenamos senha em texto puro.
+- photo_url (TEXT): URL opcional para avatar.
+- provider (TEXT): Origem da conta ('email', 'google', 'guest').
+- is_guest (INTEGER): 1 se for conta temporária, 0 se permanente.
+- ativo (INTEGER): Soft delete. 0 desativa o usuário sem apagar dados.
+- criado_em (TEXT): Timestamp ISO 8601 da criação.
+- atualizado_em (TEXT): Timestamp da última atualização.
+
+4.3. TABELA: conversas
+
+Representa um tópico ou sessão de chat entre o usuário e a IA.
+
+Campos:
+- id (TEXT, PK): UUID da conversa.
+- user_id (TEXT, FK): Referência a `usuarios.id`. ON DELETE CASCADE (se o usuário 
+  for apagado, suas conversas somem).
+- titulo (TEXT): Título gerado automaticamente ou pelo usuário.
+- is_private (INTEGER): 1 se a conversa não deve aparecer em listas públicas 
+  (futuro recurso).
+- criado_em (TEXT): Data de início.
+- atualizado_em (TEXT): Data da última mensagem. Usado para ordenação.
+
+4.4. TABELA: mensagens
+
+O conteúdo histórico do chat.
+
+Campos:
+- id (TEXT, PK): UUID da mensagem.
+- conversa_id (TEXT, FK): Referência a `conversas.id`. ON DELETE CASCADE.
+- role (TEXT): Quem falou? ('user', 'assistant', 'system'). Restrição CHECK.
+- content (TEXT): O texto da mensagem. Pode ser longo.
+- thinking_time (REAL): Tempo que a IA levou para responder (em segundos).
+- criado_em (TEXT): Timestamp exato da mensagem.
+
+4.5. TABELA: tokens_usuarios
+
+Gerencia a cota de uso da IA (sistema de limitação).
+
+Campos:
+- id (TEXT, PK): UUID do registro de tokens.
+- user_id (TEXT, FK): Referência única a `usuarios.id`.
+- tokens_usados (INTEGER): Acumulado gasto na janela atual.
+- limite_tokens (INTEGER): Teto máximo permitido (ex: 50.000 para Free).
+- janela_inicio (TEXT): Marco inicial da contagem de 8 horas.
+- plano (TEXT): 'free' ou 'pro'. Define o limite.
+- atualizado_em (TEXT): Última vez que o saldo foi tocado.
+
+4.6. TABELA: sessoes
+
+Gerencia o estado de "logado" via JWT.
+
+Campos:
+- id (TEXT, PK): UUID da sessão.
+- user_id (TEXT, FK): Dono da sessão.
+- token (TEXT, UNIQUE): O JWT string. Indexado para busca rápida.
+- expires_at (TEXT): Quando a sessão expira.
+- criado_em (TEXT): Data de login.
+
+4.7. ÍNDICES E PERFORMANCE
+
+Para garantir velocidade mesmo com milhares de registros, os seguintes índices 
+são criados automaticamente:
+
+- idx_conversas_user_id: Acelera `SELECT * FROM conversas WHERE user_id = ?`.
+- idx_mensagens_conversa_id: Acelera carregamento do chat.
+- idx_tokens_user_id: Acesso rápido ao saldo.
+- idx_sessoes_token: Validação instantânea do JWT na DB.
+- idx_sessoes_expires_at: Limpeza eficiente de sessões expiradas.
+
+4.8. INTEGRIDADE REFERENCIAL
+
+O SQLite é configurado com `PRAGMA foreign_keys = ON`. Isso garante que:
+1. Você não pode criar uma mensagem para uma conversa que não existe.
+2. Se um usuário é deletado, TODAS as suas conversas, mensagens, tokens e sessões 
+   são apagados automaticamente (CASCADE), evitando dados órfãos e corrupção.
+
+================================================================================
+5. API RESTFUL - ESPECIFICAÇÃO COMPLETA
+================================================================================
+
+5.1. PADRÕES DE COMUNICAÇÃO
+
+- Formato: JSON (application/json)
+- Codificação: UTF-8
+- Autenticação: Header `Authorization: Bearer <TOKEN_JWT>`
+- Base URL: Definida em `VITE_DATABASE_URL` (ex: http://localhost:8000)
+
+5.2. ENDPOINTS DE AUTENTICAÇÃO (/auth)
+
+POST /auth/registro
+  Descrição: Cria nova conta de usuário.
+  Body: { "nome": "João", "email": "joao@email.com", "senha": "Senha123" }
+  Retorno (201): { "user": {...}, "token": "eyJ...", "expires_at": "..." }
+  Erros: 400 (Email já existe), 422 (Dados inválidos).
+
+POST /auth/login
+  Descrição: Autentica usuário existente.
+  Body: { "email": "joao@email.com", "senha": "Senha123" }
+  Retorno (200): { "user": {...}, "token": "eyJ...", "expires_at": "..." }
+  Erros: 401 (Credenciais inválidas).
+
+POST /auth/guest
+  Descrição: Cria conta temporária sem senha.
+  Retorno (200): { "user": {...}, "token": "eyJ...", ... }
+
+GET /auth/me
+  Descrição: Obtém dados do usuário logado.
+  Auth: Obrigatória.
+  Retorno (200): { "id": "...", "nome": "...", "email": "..." }
+  Erros: 401 (Token inválido/expirado).
+
+POST /auth/logout
+  Descrição: Invalida o token atual.
+  Auth: Obrigatória.
+  Retorno (200): { "message": "Logout realizado" }
+
+5.3. ENDPOINTS DE CONVERSAS (/conversas)
+
+GET /conversas
+  Descrição: Lista histórico de conversas do usuário.
+  Query Params: ?limit=20&offset=0 (Paginação futura)
+  Retorno (200): { "conversas": [ {...}, {...} ] }
+
+POST /conversas
+  Descrição: Inicia novo chat.
+  Body: { "titulo": "Projeto X" }
+  Retorno (201): { "id": "...", "titulo": "...", "criado_em": "..." }
+
+PUT /conversas/{id}
+  Descrição: Renomeia ou arquiva conversa.
+  Body: { "titulo": "Novo Título", "is_private": true }
+  Retorno (200): Conversa atualizada.
+
+DELETE /conversas/{id}
+  Descrição: Remove conversa e todas as mensagens.
+  Retorno (200): { "message": "Deletado" }
+
+5.4. ENDPOINTS DE MENSAGENS (/mensagens)
+
+GET /mensagens/{conversa_id}
+  Descrição: Carrega histórico de um chat específico.
+  Retorno (200): { "mensagens": [ {"role": "user", "content": "..."}, ... ] }
+
+POST /mensagens
+  Descrição: Adiciona mensagem ao chat.
+  Body: { "conversa_id": "...", "role": "user", "content": "Olá", "thinking_time": 1.5 }
+  Retorno (201): Mensagem criada.
+  Nota: Atualiza automaticamente `atualizado_em` da conversa pai.
+
+DELETE /mensagens/{id}
+  Descrição: Apaga mensagem específica.
+  Retorno (200): { "message": "Deletado" }
+
+5.5. ENDPOINTS DE TOKENS (/tokens)
+
+GET /tokens/saldo
+  Descrição: Verifica quota disponível.
+  Retorno (200): { "tokens_usados": 1200, "limite_tokens": 50000, "plano": "free" }
+
+POST /tokens/consumir
+  Descrição: Debita tokens por uso de IA.
+  Body: { "amount": 150, "descricao": "Geração de resposta" }
+  Lógica: Verifica janela de 8h. Se expirada, reseta contador. Se saldo insuficiente, nega.
+  Retorno (200): { "allowed": true, "tokens_restantes": 48650 }
+  Erros: 402 (Payment Required / Saldo Insuficiente).
+
+POST /tokens/upgrade
+  Descrição: Migra de Free para Pro.
+  Body: { "novo_plano": "pro" }
+  Retorno (200): { "plano": "pro", "limite_tokens": 500000 }
+
+5.6. ENDPOINTS DE SISTEMA
+
+GET /health
+  Descrição: Check de vitalidade do servidor.
+  Retorno (200): { "status": "ok", "version": "1.0", "db_size": "1024KB" }
+
+5.7. CÓDIGOS DE STATUS HTTP
+
+- 200 OK: Sucesso na operação.
+- 201 Created: Recurso criado com sucesso (Registro, Nova Conversa).
+- 400 Bad Request: Dados inválidos ou regra de negócio violada.
+- 401 Unauthorized: Token ausente, inválido ou expirado.
+- 402 Payment Required: Saldo de tokens insuficiente.
+- 403 Forbidden: Ação não permitida (ex: tentar editar conversa de outro usuário).
+- 404 Not Found: Recurso não encontrado.
+- 500 Internal Server Error: Erro crítico no servidor ou banco de dados.
+
+================================================================================
+6. SEGURANÇA E AUTENTICAÇÃO
+================================================================================
+
+6.1. HASHING DE SENHAS
+
+Embora o código utilize SHA-256 para simplicidade e zero dependências externas 
+pesadas, a recomendação para produção de alta segurança é usar `bcrypt`.
+No implementation atual:
+- A senha recebida é concatenada com um salt (pode ser implementado) e hashada.
+- `hashlib.sha256(senha.encode()).hexdigest()`
+- Comparação segura usando `hmac.compare_digest()` para evitar ataques de timing.
+
+6.2. JSON WEB TOKENS (JWT)
+
+O sistema usa JWT stateless para autenticação.
+Estrutura do Token:
+- Header: { "alg": "HS256", "typ": "JWT" }
+- Payload: { "sub": "user_id", "exp": timestamp_expiracao, "iat": timestamp_emitido }
+- Signature: Assinado com `JWT_SECRET` (variável de ambiente crítica).
+
+Validade: 30 dias.
+Ao fazer login, o servidor gera o token e o frontend o salva no localStorage.
+Em cada requisição protegida, o frontend envia: `Authorization: Bearer <token>`.
+O middleware do FastAPI decodifica o token, verifica a assinatura e a expiração. 
+Se válido, injeta os dados do usuário na rota (`current_user`).
+
+6.3. GESTÃO DE SESSÕES
+
+Apesar do JWT ser stateless, a tabela `sessoes` mantém um registro dos tokens ativos.
+Isso permite:
+- Logout efetivo: O token é removido da tabela (ou listado em blacklist).
+- Revogação: Se um usuário tiver a conta comprometida, o admin pode limpar a tabela 
+  `sessoes` daquele usuário, forçando re-login em todos os dispositivos.
+
+6.4. CORS (CROSS-ORIGIN RESOURCE SHARING)
+
+Como o frontend (ex: vercel.app) e o backend (ex: meu-ip:8000) estão em domínios 
+diferentes, o navegador bloquearia as requisições sem CORS.
+Configuração no `main.py`:
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://meu-saas.vercel.app", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+IMPORTANTE: Em produção, nunca use `allow_origins=["*"]` se estiver lidando com 
+dados sensíveis e autenticação. Liste explicitamente os domínios permitidos.
+
+6.5. PREVENÇÃO CONTRA SQL INJECTION
+
+Todas as consultas ao banco usam parâmetros vinculados (bound parameters).
+ERRADO (Vulnerável):
+`cursor.execute(f"SELECT * FROM usuarios WHERE email = '{email}'")`
+
+CERTO (Seguro):
+`cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))`
+
+O SQLite trata os parâmetros como dados, não como código SQL executável, 
+neutralizando tentativas de injeção.
+
+6.6. PROTEÇÃO CONTRA RACE CONDITIONS
+
+No consumo de tokens, dois pedidos simultâneos poderiam ler o mesmo saldo, 
+ambos aprovarem o gasto e debitar apenas uma vez, gerando prejuízo.
+Solução: Transações com `BEGIN IMMEDIATE`.
+Isso coloca um lock exclusivo na tabela no momento da leitura. O segundo pedido 
+fica esperando o primeiro terminar. Garantimos atomicidade total.
+
+================================================================================
+7. SISTEMA DE TOKENS E LIMITAÇÃO DE USO
+================================================================================
+
+7.1. CONCEITO DE JANELA DESLIZANTE (SLIDING WINDOW)
+
+Para evitar que usuários gastem 50k tokens em 1 minuto e fiquem sem uso o resto 
+do dia, implementamos uma janela de tempo fixa (ex: 8 horas).
+- Ao primeiro uso do dia, `janela_inicio` é marcada.
+- Todos os gastos são somados.
+- Quando `agora() > janela_inicio + 8 horas`, o contador zera automaticamente 
+  no próximo consumo.
+
+7.2. LÓGICA DE CONSUMO ATÔMICO
+
+Fluxo da função `consumir_tokens`:
+1. Inicia transação `BEGIN IMMEDIATE`.
+2. Lê saldo atual e `janela_inicio`.
+3. Verifica se passou de 8h. Se sim, reseta `tokens_usados = 0` e atualiza `janela_inicio`.
+4. Calcula `novo_saldo = tokens_usados + amount`.
+5. Se `novo_saldo > limite`: Rollback e retorna Erro 402.
+6. Se ok: Update `tokens_usados = novo_saldo`.
+7. Commit.
+
+7.3. PLANOS: FREE VS. PRO
+
+- Free:
+  * Limite: 50.000 tokens por janela.
+  * Reset: A cada 8 horas.
+  
+- Pro:
+  * Limite: 500.000 tokens por janela.
+  * Reset: A cada 8 horas (ou 24h, configurável).
+
+A mudança de plano é feita via endpoint `/tokens/upgrade`, atualizando o campo 
+`plano` e `limite_tokens` na tabela `tokens_usuarios`.
+
+7.4. RESET AUTOMÁTICO DE COTAS
+
+O reset não é feito por um cron job separado (que consumiria recursos). Ele é 
+"preguiçoso" (lazy evaluation): ocorre no momento exato em que o usuário tenta 
+consumir tokens e o sistema detecta que a janela expirou. Isso economiza ciclos 
+de CPU para usuários inativos.
+
+7.5. EXEMPLOS DE CÁLCULO
+
+Cenário: Usuário Free (Limite 50k). Janela iniciou às 08:00. Agora são 10:00.
+- Já usou 40.000 tokens.
+- Tenta enviar mensagem que custa 5.000.
+- Cálculo: 40.000 + 5.000 = 45.000 <= 50.000? SIM.
+- Ação: Permite. Novo saldo usado: 45.000.
+
+Cenário: Mesmo usuário, agora são 16:01 (passou de 8h).
+- Tenta enviar mensagem de 5.000.
+- Sistema detecta: 16:01 > 08:00 + 8h.
+- Ação: Reseta `tokens_usados` para 0. Atualiza `janela_inicio` para 16:01.
+- Cálculo: 0 + 5.000 <= 50.000? SIM.
+- Ação: Permite. Novo saldo usado: 5.000.
+
+================================================================================
+8. INTEGRAÇÃO COM FRONTEND (REACT + TYPESCRIPT)
+================================================================================
+
+8.1. BIBLIOTECA dbClient.ts
+
+Este arquivo é a ponte entre o React e o Python. Ele encapsula toda a complexidade 
+de chamadas HTTP, tratamento de headers e erros.
+
+Funções Principais Exportadas:
+- `registrar(nome, email, senha)`: Chama POST /auth/registro.
+- `login(email, senha)`: Chama POST /auth/login e salva o token.
+- `logout()`: Chama POST /auth/logout e limpa token local.
+- `listarConversas()`: GET /conversas.
+- `criarConversa(titulo)`: POST /conversas.
+- `criarMensagem(dados)`: POST /mensagens.
+- `getSaldo()`: GET /tokens/saldo.
+- `consumirTokens(amount, desc)`: POST /tokens/consumir.
+
+8.2. CONFIGURAÇÃO DE VARIÁVEIS DE AMBIENTE
+
+No arquivo `.env` da raiz do projeto React:
+
+# URL do seu backend Python
+# Local: http://localhost:8000
+# Produção: https://api.seudominio.com ou http://SEU_IP:8000
+VITE_DATABASE_URL=http://localhost:8000
+
+O cliente lê essa variável via `import.meta.env.VITE_DATABASE_URL`.
+
+8.3. SUBSTITUIÇÃO DO LOCALSTORAGE
+
+Antigo (apenas local):
+`const chats = JSON.parse(localStorage.getItem('chats') || '[]');`
+
+Novo (híbrido/cloud):
+`const chats = await dbClient.listarConversas();`
+
+O localStorage passa a ser usado APENAS para armazenar o token JWT temporariamente 
+enquanto a sessão estiver ativa, garantindo que o usuário não precise logar a 
+cada refresh de página. Os dados reais (chats, msgs) vivem no banco.
+
+8.4. TRATAMENTO DE ERROS E OFFLINE
+
+O `dbClient` deve ser resiliente:
+- Se a chamada falhar (sem internet), retornar erro amigável.
+- Opcionalmente, implementar fila de offline: salvar mensagens no localStorage 
+  e tentar reenviar quando a conexão voltar.
+
+Exemplo de tratamento no Hook `useChat`:
+```typescript
+try {
+  await dbClient.criarMensagem(novaMsg);
+} catch (error) {
+  toast.error("Sem conexão com o servidor. Mensagem salva localmente.");
+  // Fallback para localStorage
+}
+```
+
+8.5. EXEMPLOS DE USO NOS HOOKS
+
+Hook `useAuth`:
+```typescript
+const handleLogin = async (email, pass) => {
+  const res = await dbClient.login(email, pass);
+  if (res.token) {
+    setUser(res.user);
+    setToken(res.token);
+  }
+};
+```
+
+Hook `useTokenManager`:
+```typescript
+const checkLimit = async (cost) => {
+  const saldo = await dbClient.getSaldo();
+  if (saldo.tokens_usados + cost > saldo.limite) {
+     showUpgradeModal();
+     return false;
+  }
+  return true;
+};
+```
+
+================================================================================
+9. GUIA DE IMPLANTAÇÃO (DEPLOYMENT)
+================================================================================
+
+9.1. PRÉ-REQUISITOS
+
+Hardware Mínimo Recomendado:
+- CPU: Dual Core (qualquer processador moderno serve).
+- RAM: 2GB (O Python + SQLite consomem pouco).
+- Disco: 10GB livres (SSD recomendado para performance de I/O).
+- Rede: Conexão estável. Upload de pelo menos 5Mbps para atender múltiplos usuários.
+
+Software:
+- Python 3.9 ou superior instalado.
+- Git (opcional, para clonar o repo).
+- Editor de texto (VS Code, Notepad++).
+
+9.2. INSTALAÇÃO PASSO A PASSO
+
+Passo 1: Preparar o Ambiente
+Baixe e instale Python em python.org. Marque a opção "Add to PATH".
+
+Passo 2: Obter o Código
+Clone o repositório ou copie a pasta `backend` para seu servidor/PC.
+
+Passo 3: Instalar Dependências
+Abra o terminal na pasta `backend`:
+`pip install -r requirements.txt`
+
+Passo 4: Configurar Variáveis
+Crie um arquivo `.env` na pasta `backend`:
+DATABASE_PATH=./data/cxia.db
+JWT_SECRET=sua_chave_super_secreta_e_longa_aqui
+ALLOWED_ORIGINS=https://seu-site.vercel.app,http://localhost:5173
+
+Passo 5: Rodar o Servidor
+Windows: `start.bat`
+Linux/Mac: `./start.sh` ou `python main.py`
+
+Você verá: `Uvicorn running on http://0.0.0.0:8000`.
+
+9.3. CONFIGURAÇÃO DE REDE E FIREWALL
+
+Para acessar de fora da sua rede local:
+1. Descubra seu IP Público (acesse "meu ip" no Google).
+2. Configure seu Roteador:
+   - Acesse o painel do roteador (geralmente 192.168.0.1 ou 1.1).
+   - Procure por "Port Forwarding" ou "Encaminhamento de Portas".
+   - Crie uma regra: Porta Externa 8000 -> Porta Interna 8000 -> IP Local do seu PC.
+3. No Firewall do Windows/Linux, libere a porta 8000 para entradas TCP.
+
+Atenção: Expor portas diretamente tem riscos. Use senhas fortes e mantenha o 
+sistema operacional atualizado.
+
+9.4. EXPOSIÇÃO SEGURA PARA A INTERNET (TUNNELING)
+
+A maneira MAIS SEGURA e recomendada para iniciantes é usar um Túnel HTTPS, 
+evitando abrir portas no roteador.
+
+Opção A: Cloudflare Tunnel (Grátis e Profissional)
+1. Instale o `cloudflared`.
+2. Rode: `cloudflared tunnel --url http://localhost:8000`.
+3. Ele gerará uma URL tipo `https://meu-cxia.trycloudflare.com`.
+4. Use essa URL no `VITE_DATABASE_URL` do frontend.
+5. Vantagem: HTTPS automático, proteção DDoS, sem abrir portas.
+
+Opção B: Ngrok (Fácil, mas URL muda no plano grátis)
+1. `ngrok http 8000`.
+2. Copie a URL gerada.
+
+9.5. EXECUÇÃO COMO SERVIÇO
+
+Para o backend rodar sempre, mesmo se reiniciar o PC:
+
+Linux (Systemd):
+Crie `/etc/systemd/system/cxia.service`:
+[Unit]
+Description=CxIA Backend
+After=network.target
+
+[Service]
+User=seu_usuario
+WorkingDirectory=/caminho/para/backend
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+Comandos:
+`sudo systemctl enable cxia`
+`sudo systemctl start cxia`
+
+Windows (NSSM - Non-Sucking Service Manager):
+1. Baixe o NSSM.
+2. `nssm install CxIABackend`.
+3. Aponte para `python.exe` e adicione `main.py` como argumento.
+4. Inicie o serviço.
+
+================================================================================
+10. MANUTENÇÃO E OPERAÇÕES
+================================================================================
+
+10.1. BACKUP E RESTAURAÇÃO
+
+Backup:
+O banco é UM ÚNICO ARQUIVO. Para fazer backup:
+1. Pare o servidor (opcional, mas recomendado para consistência total).
+2. Copie `backend/data/cxia.db` para um local seguro (Google Drive, HD Externo).
+3. Se quiser backup online automatizado, use um script simples de copy.
+
+Restauração:
+1. Pare o servidor.
+2. Substitua o arquivo `cxia.db` atual pela cópia de backup.
+3. Inicie o servidor.
+
+Dica: O SQLite suporta backup a quente (enquanto roda) usando o comando `.backup` 
+no CLI do sqlite3, mas copiar o arquivo com o servidor parado é o método mais 
+seguro para leigos.
+
+10.2. LOGS E MONITORAMENTO
+
+O FastAPI/Uvicorn escreve logs no console (stdout).
+- Em Linux, redirecione para arquivo: `python main.py >> logs/app.log 2>&1`.
+- Monitore erros procurando por "ERROR" ou "CRITICAL".
+- Use ferramentas como `htop` para ver uso de CPU/RAM do processo Python.
+
+10.3. OTIMIZAÇÃO DE PERFORMANCE
+
+O sistema já vem com `WAL mode` ativado, que é o maior ganho de performance.
+Dicas adicionais:
+- Mantenha o arquivo .db em um SSD.
+- Se o arquivo crescer muito (>1GB), rode periodicamente: `VACUUM;` (compacta o DB).
+- Aumente o `cache_size` do SQLite se tiver RAM sobrando.
+
+10.4. LIMPEZA DE DADOS ANTIGOS
+
+Para evitar que o banco cresça infinitamente:
+- Crie um script Python que rode semanalmente deletando mensagens de usuários 
+  inativos há mais de 1 ano.
+- Exemplo SQL: `DELETE FROM mensagens WHERE criado_em < datetime('now', '-1 year');`
+
+10.5. ATUALIZAÇÃO DE VERSÃO
+
+Para atualizar o backend:
+1. Faça backup do `cxia.db`.
+2. Pare o serviço.
+3. Substitua os arquivos `.py` pelos novos (git pull ou copy).
+4. Rode `pip install -r requirements.txt` (caso haja novas libs).
+5. Inicie o serviço.
+O script `models.py` é idempotente (`IF NOT EXISTS`), então ele não quebrará 
+o banco existente ao adicionar novas colunas/tabelas futuras.
+
+================================================================================
+11. SOLUÇÃO DE PROBLEMAS (TROUBLESHOOTING)
+================================================================================
+
+11.1. ERROS COMUNS DE CONEXÃO
+
+Erro: "Connection Refused"
+- Causa: Backend não está rodando ou firewall bloqueando.
+- Solução: Verifique se o terminal mostra "Uvicorn running...". Teste `curl http://localhost:8000/health`.
+
+Erro: "CORS Policy" no navegador
+- Causa: O frontend está em um domínio não listado no `ALLOWED_ORIGINS`.
+- Solução: Adicione o domínio do frontend no `.env` do backend e reinicie.
+
+11.2. PROBLEMAS DE PERMISSÃO DE ARQUIVO
+
+Erro: "unable to open database file"
+- Causa: O usuário que roda o Python não tem permissão de escrita na pasta `data/`.
+- Solução (Linux): `chmod 777 data/` ou `chown usuario:grupo data/`.
+- Solução (Windows): Execute como Administrador ou ajuste propriedades da pasta.
+
+11.3. DEBUG DE JWT INVÁLIDO
+
+Erro: "Invalid token" ou "Token expired"
+- Causa: Relógio do servidor ou do cliente dessincronizado, ou `JWT_SECRET` mudou.
+- Solução: Verifique se o `JWT_SECRET` no `.env` é o mesmo de quando o token foi gerado. 
+  Tokens antigos serão invalidados se a chave mudar (medida de segurança).
+
+11.4. CONFLITOS DE PORTA
+
+Erro: "[Errno 98] Address already in use"
+- Causa: Outro programa (ou outra instância do backend) está usando a porta 8000.
+- Solução: Mude a porta no `main.py` para 8001 ou mate o processo ocupando a porta.
+
+================================================================================
+12. PERGUNTAS FREQUENTES (FAQ)
+================================================================================
+
+P: Posso hospedar o backend na Vercel também?
+R: Não. A Vercel é serverless e não suporta processos persistentes nem escrita 
+   em disco (o arquivo .db seria apagado a cada request). O backend precisa de 
+   um servidor VPS (DigitalOcean, Hetzner) ou rodar no seu PC.
+
+P: O SQLite aguenta muitos usuários simultâneos?
+R: Sim, para leitura é extremamente rápido. Para escrita, ele trava o arquivo 
+   momentaneamente. Para um SaaS com até ~100-200 usuários ativos simultâneos, 
+   ele performa muito bem. Acima disso, considere migrar para PostgreSQL (a 
+   estrutura do código facilita essa migração futura).
+
+P: E se meu PC desligar?
+R: O site ficará indisponível até você ligar o PC novamente. Para produção crítica, 
+   recomenda-se hospedar este backend em um VPS barato (ex: $5/mês) que fica 
+   ligado 24/7 na nuvem, mas ainda assim sendo "seu" banco privado.
+
+P: Como faço para ver os dados brutos?
+R: Baixe o "DB Browser for SQLite". Abra o arquivo `cxia.db`. Você poderá navegar 
+   nas tabelas, rodar queries SQL e exportar dados manualmente.
+
+P: Posso mudar o segredo do JWT depois?
+R: Sim, mas isso invalidará todas as sessões ativas. Os usuários terão que fazer 
+   login novamente.
+
+================================================================================
+13. APÊNDICE: CÓDIGO DE REFERÊNCIA RÁPIDA
+================================================================================
+
+Snippet: Testar conexão via Curl
+curl -X GET http://localhost:8000/health
+
+Snippet: Registrar usuário via Curl
+curl -X POST http://localhost:8000/auth/registro \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Teste","email":"teste@test.com","senha":"123"}'
+
+Snippet: Query SQL para contar mensagens
+SELECT user_id, COUNT(*) as total FROM mensagens GROUP BY user_id;
+
+Snippet: Forçar Vacuum no banco
+sqlite3 data/cxia.db "VACUUM;"
+
+================================================================================
+14. TERMOS DE USO E LICENCIAMENTO
+================================================================================
+
+Este software é fornecido "como está", sem garantias de qualquer tipo.
+O administrador é responsável pela segurança do servidor onde o backend é hospedado, 
+pelo backup regular dos dados e pelo cumprimento das leis de proteção de dados 
+(LGPD/GDPR) aplicáveis aos usuários finais.
+
+O uso deste sistema implica na aceitação de que a disponibilidade do serviço 
+depende diretamente da infraestrutura local do proprietário.
+
+--- FIM DO DOCUMENTO ---
+Documentação gerada para o projeto CxIA Database System.
+Versão 1.0.0 - Todos os direitos reservados.
