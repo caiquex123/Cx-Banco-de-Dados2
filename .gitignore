@@ -1,45 +1,43 @@
 ```
-# Python
+# Dependencies
+.venv/
+venv/
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+*.pyc
+*.pyo
+*.pyd
 
-# Database
-backend/data/cxia.db
-cx_database/data/
-
-# Environment
+# Environment variables
 .env
 .env.local
 .env.*
-.env~*
-.env.local~
-.env.*~
+
+# Database
+cx_ia.db
+
+# Logs
+*.log
 
 # Temporary files
 *.tmp
-*.temp
-*~
+*.swp
+*.swo
+
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Shell script
-cx_manager.sh
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
 ```
