@@ -66,19 +66,33 @@ install_dependencies() {
 setup_postgresql() {
     log_info "Configurando PostgreSQL..."
     
-    # Inicializar cluster do PostgreSQL
-    if [ ! -d "/var/lib/postgres/data" ]; then
-        sudo -i -u postgres initdb -D /var/lib/postgres/data
+    # Inicializar cluster do PostgreSQL (necessário no Arch)
+    if [ ! -d "/var/lib/postgres/data/base" ]; then
+        log_info "Inicializando cluster do PostgreSQL..."
+        sudo -i -u postgres initdb -D /var/lib/postgres/data || {
+            log_error "Falha ao inicializar PostgreSQL"
+            exit 1
+        }
+    else
+        log_info "Cluster do PostgreSQL já existe"
     fi
     
     # Iniciar serviço
     systemctl enable postgresql
-    systemctl start postgresql
+    if ! systemctl start postgresql; then
+        log_error "Falha ao iniciar PostgreSQL"
+        systemctl status postgresql --no-pager -l
+        exit 1
+    fi
+    
+    # Aguardar PostgreSQL estar pronto
+    sleep 2
     
     # Criar banco de dados e usuário
-    sudo -i -u postgres psql -c "CREATE DATABASE cxia_db;" || true
-    sudo -i -u postgres psql -c "CREATE USER cxia_user WITH PASSWORD 'cxia_secure_password_2024';" || true
-    sudo -i -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE cxia_db TO cxia_user;" || true
+    sudo -i -u postgres psql -c "CREATE DATABASE cxia_db;" 2>/dev/null || true
+    sudo -i -u postgres psql -c "CREATE USER cxia_user WITH PASSWORD 'cxia_secure_password_2024';" 2>/dev/null || true
+    sudo -i -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE cxia_db TO cxia_user;" 2>/dev/null || true
+    sudo -i -u postgres psql -c "ALTER DATABASE cxia_db OWNER TO cxia_user;" 2>/dev/null || true
     
     log_success "PostgreSQL configurado"
 }
