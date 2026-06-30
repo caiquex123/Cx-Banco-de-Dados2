@@ -41,10 +41,17 @@ install_dependencies() {
     log_info "Instalando dependências do sistema..."
     
     # Banco de dados e cache
-    pacman -S --noconfirm postgresql postgresql-contrib redis
+    # No CachyOS, redis foi substituído por valkey (drop-in compatible)
+    pacman -S --noconfirm postgresql
     
-    # Python e ferramentas
-    pacman -S --noconfirm python python-pip python-virtualenv python-pipx
+    # Tentar instalar redis, se falhar usar valkey
+    if ! pacman -S --noconfirm redis 2>/dev/null; then
+        log_warning "Redis não disponível, instalando Valkey (compatível)..."
+        pacman -S --noconfirm valkey
+    fi
+    
+    # Python e ferramentas (python-virtualenv no Arch)
+    pacman -S --noconfirm python python-pip python-virtualenv pipx
     
     # Web server
     pacman -S --noconfirm nginx
@@ -76,14 +83,26 @@ setup_postgresql() {
     log_success "PostgreSQL configurado"
 }
 
-# Configurar Redis
+# Configurar Redis/Valkey
 setup_redis() {
-    log_info "Configurando Redis..."
+    log_info "Configurando Redis/Valkey..."
     
-    systemctl enable redis
-    systemctl start redis
+    # Detectar qual serviço está disponível
+    if systemctl list-unit-files | grep -q redis.service; then
+        REDIS_SERVICE="redis"
+    elif systemctl list-unit-files | grep -q valkey.service; then
+        REDIS_SERVICE="valkey"
+    else
+        log_error "Nenhum serviço Redis/Valkey encontrado!"
+        return 1
+    fi
     
-    log_success "Redis configurado"
+    log_info "Usando serviço: $REDIS_SERVICE"
+    
+    systemctl enable $REDIS_SERVICE
+    systemctl start $REDIS_SERVICE
+    
+    log_success "Redis/Valkey configurado"
 }
 
 # Configurar ambiente Python
