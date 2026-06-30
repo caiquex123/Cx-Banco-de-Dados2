@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CxIA Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sidebar-active { background-color: rgba(59, 130, 246, 0.1); border-right: 3px solid #3b82f6; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-active { background-color: #10b981; }
+        .status-inactive { background-color: #ef4444; }
+        .status-pending { background-color: #f59e0b; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0">
+            <div class="h-16 flex items-center px-6 border-b border-gray-200">
+                <span class="text-xl font-bold text-blue-600">CxIA Admin</span>
+            </div>
+            <nav class="mt-4">
+                <a href="#" onclick="showPage('dashboard')" id="nav-dashboard" class="sidebar-active flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    Dashboard
+                </a>
+                <a href="#" onclick="showPage('users')" id="nav-users" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    Usuários
+                </a>
+                <a href="#" onclick="showPage('tokens')" id="nav-tokens" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Tokens
+                </a>
+                <a href="#" onclick="showPage('subscriptions')" id="nav-subscriptions" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                    Assinaturas
+                </a>
+                <a href="#" onclick="showPage('settings')" id="nav-settings" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Configurações
+                </a>
+                <a href="#" onclick="showPage('logs')" id="nav-logs" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Logs
+                </a>
+            </nav>
+            <div class="absolute bottom-0 w-64 border-t border-gray-200 p-4">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">A</div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-700">Admin</p>
+                        <p class="text-xs text-gray-500">admin@cxia.com</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Top Bar -->
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8">
+                <h1 id="page-title" class="text-xl font-semibold text-gray-800">Dashboard</h1>
+                <div class="flex items-center space-x-4">
+                    <span id="connection-status" class="flex items-center text-sm text-gray-600">
+                        <span class="status-dot status-active mr-2"></span>
+                        Conectado
+                    </span>
+                    <button onclick="refreshData()" class="p-2 text-gray-500 hover:text-gray-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Page -->
+            <div id="page-dashboard" class="p-8">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl p-6 card-hover transition-all duration-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Total de Usuários</p>
+                                <p id="stat-total-users" class="text-3xl font-bold text-gray-800">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-600 mt-2">↑ 12% este mês</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 card-hover transition-all duration-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Receita Mensal (MRR)</p>
+                                <p id="stat-mrr" class="text-3xl font-bold text-gray-800">R$ 0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-600 mt-2">↑ 8% este mês</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 card-hover transition-all duration-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Tokens Usados (Hoje)</p>
+                                <p id="stat-tokens-today" class="text-3xl font-bold text-gray-800">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Limite: 1M / dia</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 card-hover transition-all duration-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Assinaturas Ativas</p>
+                                <p id="stat-active-subs" class="text-3xl font-bold text-gray-800">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-600 mt-2">↑ 5 novas hoje</p>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Uso de Tokens (Últimos 7 dias)</h3>
+                        <canvas id="tokens-chart" height="200"></canvas>
+                    </div>
+                    <div class="bg-white rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuição de Planos</h3>
+                        <canvas id="plans-chart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Users Table -->
+                <div class="bg-white rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Usuários Recentes</h3>
+                        <button onclick="showPage('users')" class="text-sm text-blue-600 hover:underline">Ver todos</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-users-table" class="divide-y divide-gray-200">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Page -->
+            <div id="page-users" class="hidden p-8">
+                <div class="bg-white rounded-xl p-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                        <div class="flex-1 mb-4 md:mb-0">
+                            <div class="relative">
+                                <input type="text" id="user-search" placeholder="Buscar por email ou nome..." 
+                                    class="w-full md:w-96 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                        </div>
+                        <div class="flex space-x-3">
+                            <select id="plan-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">Todos os Planos</option>
+                                <option value="free">Free</option>
+                                <option value="pro">Pro</option>
+                                <option value="max">Max</option>
+                            </select>
+                            <button onclick="exportUsers()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                                Exportar CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tokens Hoje</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table" class="divide-y divide-gray-200">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tokens Page -->
+            <div id="page-tokens" class="hidden p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
+                        <p class="text-purple-100 mb-2">Total de Tokens (Hoje)</p>
+                        <p id="tokens-total-today" class="text-4xl font-bold">0</p>
+                        <div class="mt-4 h-2 bg-purple-400 rounded-full overflow-hidden">
+                            <div id="tokens-progress" class="h-full bg-white rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p class="text-sm text-purple-100 mt-2">de 1.000.000 limite diário</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6">
+                        <p class="text-gray-500 mb-2">Custo Estimado (Hoje)</p>
+                        <p id="tokens-cost-today" class="text-4xl font-bold text-gray-800">R$ 0,00</p>
+                        <p class="text-sm text-gray-400 mt-4">Baseado em $0.002/1K tokens</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6">
+                        <p class="text-gray-500 mb-2">Top Usuário</p>
+                        <p id="tokens-top-user" class="text-xl font-semibold text-gray-800">-</p>
+                        <p id="tokens-top-user-count" class="text-3xl font-bold text-purple-600">0 tokens</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Top 10 Usuários por Consumo</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Input</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Output</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-users-tokens" class="divide-y divide-gray-200">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subscriptions Page -->
+            <div id="page-subscriptions" class="hidden p-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-xl p-6 border-l-4 border-green-500">
+                        <p class="text-gray-500 mb-2">Plano Free</p>
+                        <p id="subs-free" class="text-3xl font-bold text-gray-800">0</p>
+                        <p class="text-sm text-gray-400 mt-2">10K tokens/dia</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 border-l-4 border-blue-500">
+                        <p class="text-gray-500 mb-2">Plano Pro</p>
+                        <p id="subs-pro" class="text-3xl font-bold text-gray-800">0</p>
+                        <p class="text-sm text-gray-400 mt-2">50K tokens/dia</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 border-l-4 border-purple-500">
+                        <p class="text-gray-500 mb-2">Plano Max</p>
+                        <p id="subs-max" class="text-3xl font-bold text-gray-800">0</p>
+                        <p class="text-sm text-gray-400 mt-2">150K tokens/dia</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Todas as Assinaturas</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fim</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stripe ID</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subscriptions-table" class="divide-y divide-gray-200">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="page-settings" class="hidden p-8">
+                <div class="max-w-4xl">
+                    <div class="bg-white rounded-xl p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Configurações Gerais</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium text-gray-700">Modo de Manutenção</p>
+                                    <p class="text-sm text-gray-500">Desativar acesso ao sistema</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="maintenance-mode" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="border-t pt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Limite de Upload (MB)</label>
+                                <input type="number" id="max-upload" value="10" class="w-32 px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Limites de Tokens por Plano</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Free (tokens/dia)</label>
+                                <input type="number" id="limit-free" value="10000" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Pro (tokens/dia)</label>
+                                <input type="number" id="limit-pro" value="50000" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Max (tokens/dia)</label>
+                                <input type="number" id="limit-max" value="150000" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Feature Flags</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">Terminal</span>
+                                <input type="checkbox" checked class="toggle-feature">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">Documentação</span>
+                                <input type="checkbox" checked class="toggle-feature">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">API Pública</span>
+                                <input type="checkbox" class="toggle-feature">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <button onclick="saveSettings()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Salvar Configurações
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Page -->
+            <div id="page-logs" class="hidden p-8">
+                <div class="bg-white rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Logs do Sistema</h3>
+                        <div class="flex space-x-3">
+                            <select id="log-level-filter" class="px-3 py-2 border border-gray-300 rounded-lg">
+                                <option value="">Todos os Níveis</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                            <button onclick="downloadLogs()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                                Download JSON
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nível</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Endpoint</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Método</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tempo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-table" class="divide-y divide-gray-200">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Configuração da API
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let ws = null;
+
+        // Navegação entre páginas
+        function showPage(pageId) {
+            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`page-${pageId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('nav a').forEach(el => el.classList.remove('sidebar-active'));
+            document.getElementById(`nav-${pageId}`).classList.add('sidebar-active');
+            
+            const titles = {
+                dashboard: 'Dashboard',
+                users: 'Gerenciamento de Usuários',
+                tokens: 'Monitoramento de Tokens',
+                subscriptions: 'Assinaturas',
+                settings: 'Configurações do Sistema',
+                logs: 'Logs e Auditoria'
+            };
+            document.getElementById('page-title').textContent = titles[pageId];
+            
+            loadPageData(pageId);
+        }
+
+        // Carregar dados da página
+        async function loadPageData(pageId) {
+            try {
+                if (pageId === 'dashboard') await loadDashboard();
+                if (pageId === 'users') await loadUsers();
+                if (pageId === 'tokens') await loadTokens();
+                if (pageId === 'subscriptions') await loadSubscriptions();
+                if (pageId === 'logs') await loadLogs();
+            } catch (error) {
+                console.error(`Erro ao carregar ${pageId}:`, error);
+            }
+        }
+
+        // Dashboard
+        async function loadDashboard() {
+            // Dados mockados para demonstração
+            document.getElementById('stat-total-users').textContent = '1,234';
+            document.getElementById('stat-mrr').textContent = 'R$ 12.450';
+            document.getElementById('stat-tokens-today').textContent = '847.230';
+            document.getElementById('stat-active-subs').textContent = '89';
+
+            // Gráfico de tokens
+            const tokensCtx = document.getElementById('tokens-chart').getContext('2d');
+            new Chart(tokensCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+                    datasets: [{
+                        label: 'Tokens',
+                        data: [650000, 720000, 580000, 810000, 750000, 920000, 847230],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Gráfico de planos
+            const plansCtx = document.getElementById('plans-chart').getContext('2d');
+            new Chart(plansCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Free', 'Pro', 'Max'],
+                    datasets: [{
+                        data: [856, 289, 89],
+                        backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Tabela de usuários recentes
+            const recentUsers = [
+                { email: 'joao@email.com', plan: 'pro', status: 'active', created: '2024-01-15' },
+                { email: 'maria@email.com', plan: 'free', status: 'active', created: '2024-01-14' },
+                { email: 'pedro@email.com', plan: 'max', status: 'active', created: '2024-01-14' },
+                { email: 'ana@email.com', plan: 'free', status: 'inactive', created: '2024-01-13' }
+            ];
+            
+            const tbody = document.getElementById('recent-users-table');
+            tbody.innerHTML = recentUsers.map(u => `
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">${u.email}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${getPlanClass(u.plan)}">${u.plan}</span></td>
+                    <td class="px-4 py-3"><span class="status-dot status-${u.status}"></span></td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${u.created}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Usuários
+        async function loadUsers() {
+            const users = [
+                { id: 1, email: 'admin@cxia.com', name: 'Admin', plan: 'max', tokens: 5000, status: 'active' },
+                { id: 2, email: 'user1@email.com', name: 'João Silva', plan: 'pro', tokens: 12000, status: 'active' },
+                { id: 3, email: 'user2@email.com', name: 'Maria Santos', plan: 'free', tokens: 8500, status: 'active' },
+                { id: 4, email: 'user3@email.com', name: 'Pedro Costa', plan: 'free', tokens: 2000, status: 'inactive' }
+            ];
+
+            const tbody = document.getElementById('users-table');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">#${u.id}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${u.email}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${u.name}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${getPlanClass(u.plan)}">${u.plan}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${u.tokens.toLocaleString()}</td>
+                    <td class="px-4 py-3"><span class="status-dot status-${u.status}"></span></td>
+                    <td class="px-4 py-3">
+                        <button class="text-blue-600 hover:underline mr-2">Editar</button>
+                        <button class="text-red-600 hover:underline">Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Tokens
+        async function loadTokens() {
+            document.getElementById('tokens-total-today').textContent = '847,230';
+            document.getElementById('tokens-cost-today').textContent = 'R$ 1,69';
+            document.getElementById('tokens-top-user').textContent = 'joao@email.com';
+            document.getElementById('tokens-top-user-count').textContent = '125.000 tokens';
+            document.getElementById('tokens-progress').style.width = '84.7%';
+
+            const topUsers = [
+                { email: 'joao@email.com', plan: 'pro', input: 80000, output: 45000, total: 125000 },
+                { email: 'maria@email.com', plan: 'free', input: 50000, output: 35000, total: 85000 },
+                { email: 'pedro@email.com', plan: 'max', input: 40000, output: 30000, total: 70000 }
+            ];
+
+            const tbody = document.getElementById('top-users-tokens');
+            tbody.innerHTML = topUsers.map((u, i) => `
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">#${i + 1}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${u.email}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${getPlanClass(u.plan)}">${u.plan}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${u.input.toLocaleString()}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${u.output.toLocaleString()}</td>
+                    <td class="px-4 py-3 text-sm font-semibold text-purple-600">${u.total.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Assinaturas
+        async function loadSubscriptions() {
+            document.getElementById('subs-free').textContent = '856';
+            document.getElementById('subs-pro').textContent = '289';
+            document.getElementById('subs-max').textContent = '89';
+
+            const subs = [
+                { user: 'joao@email.com', plan: 'pro', status: 'active', start: '2024-01-01', end: '2024-02-01', stripe: 'sub_abc123' },
+                { user: 'maria@email.com', plan: 'max', status: 'active', start: '2024-01-05', end: '2024-02-05', stripe: 'sub_def456' }
+            ];
+
+            const tbody = document.getElementById('subscriptions-table');
+            tbody.innerHTML = subs.map(s => `
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">${s.user}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${getPlanClass(s.plan)}">${s.plan}</span></td>
+                    <td class="px-4 py-3"><span class="status-dot status-${s.status}"></span></td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${s.start}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${s.end}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500 font-mono">${s.stripe}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Logs
+        async function loadLogs() {
+            const logs = [
+                { time: '2024-01-15 10:30:45', level: 'INFO', endpoint: '/api/v1/chat', method: 'POST', status: 200, duration: '145ms' },
+                { time: '2024-01-15 10:29:12', level: 'WARNING', endpoint: '/api/v1/tokens', method: 'GET', status: 429, duration: '12ms' },
+                { time: '2024-01-15 10:28:33', level: 'ERROR', endpoint: '/api/v1/payment', method: 'POST', status: 500, duration: '2341ms' },
+                { time: '2024-01-15 10:27:01', level: 'INFO', endpoint: '/api/v1/users', method: 'GET', status: 200, duration: '89ms' }
+            ];
+
+            const tbody = document.getElementById('logs-table');
+            tbody.innerHTML = logs.map(log => `
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.time}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${getLevelClass(log.level)}">${log.level}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-500 font-mono">${log.endpoint}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${log.method}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${getStatusClass(log.status)}">${log.status}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${log.duration}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Helpers
+        function getPlanClass(plan) {
+            const classes = { free: 'bg-green-100 text-green-800', pro: 'bg-blue-100 text-blue-800', max: 'bg-purple-100 text-purple-800' };
+            return classes[plan] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getLevelClass(level) {
+            const classes = { INFO: 'bg-blue-100 text-blue-800', WARNING: 'bg-yellow-100 text-yellow-800', ERROR: 'bg-red-100 text-red-800' };
+            return classes[level] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getStatusClass(status) {
+            if (status >= 200 && status < 300) return 'bg-green-100 text-green-800';
+            if (status >= 400 && status < 500) return 'bg-yellow-100 text-yellow-800';
+            return 'bg-red-100 text-red-800';
+        }
+
+        // WebSocket para tempo real
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:8000/ws/admin');
+            ws.onopen = () => {
+                document.getElementById('connection-status').innerHTML = '<span class="status-dot status-active mr-2"></span>Conectado';
+            };
+            ws.onclose = () => {
+                document.getElementById('connection-status').innerHTML = '<span class="status-dot status-inactive mr-2"></span>Desconectado';
+                setTimeout(connectWebSocket, 5000);
+            };
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'sync') refreshData();
+            };
+        }
+
+        // Funções utilitárias
+        function refreshData() {
+            const currentPage = document.querySelector('[id^="page-"]:not(.hidden)').id.replace('page-', '');
+            loadPageData(currentPage);
+        }
+
+        function exportUsers() {
+            alert('Exportando CSV...');
+        }
+
+        function saveSettings() {
+            alert('Configurações salvas!');
+        }
+
+        function downloadLogs() {
+            alert('Download iniciado...');
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('dashboard');
+            connectWebSocket();
+        });
+    </script>
+</body>
+</html>
