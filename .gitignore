@@ -1,52 +1,51 @@
-```
-# Environment variables
+```bash
+# Environment
 .env
 .env.local
-.env.*
+*.env.*
 
-# Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-*.egg-info/
-dist/
-build/
-target/
-.gradle/
-
-# Logs and temporary files
+# Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
-
-# OS generated files
-.DS_Store
-Thumbs.db
 
 # Editors
 .vscode/
 .idea/
 
-# Python specific
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-.coverage
-coverage/
-htmlcov/
+# Dependencies
+.venv/
+venv/
+node_modules/
 
-# Build outputs
+# Build artifacts
+dist/
+build/
+target/
+*.pyc
+__pycache__/
+*.class
 *.o
 *.obj
-*.out
 *.exe
 *.dll
 *.so
 *.a
+*.out
+
+# System files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+.mypy_cache/
+.pytest_cache/
 
 # Compressed files
 *.zip
