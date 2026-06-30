@@ -56,7 +56,10 @@ print_success "Sistema atualizado"
 
 # Step 2: Install base dependencies
 print_header "PASSO 2: Instalando dependências básicas..."
-pacman -S --noconfirm python python-pip python-venv postgresql redis git
+
+# Arch/CachyOS usa python-virtualenv (não python-venv) e valkey (fork do redis)
+pacman -S --noconfirm --needed python python-pip python-virtualenv postgresql valkey git base-devel
+
 print_success "Dependências básicas instaladas"
 
 # Step 3: Setup PostgreSQL
@@ -72,11 +75,11 @@ GRANT ALL PRIVILEGES ON DATABASE cxia_db TO cxia;
 EOF
 print_success "PostgreSQL configurado"
 
-# Step 4: Setup Redis
-print_header "PASSO 4: Configurando Redis..."
-systemctl enable redis
-systemctl start redis
-print_success "Redis configurado"
+# Step 4: Setup Redis (Valkey)
+print_header "PASSO 4: Configurando Redis/Valkey..."
+systemctl enable valkey
+systemctl start valkey
+print_success "Valkey (Redis) configurado"
 
 # Step 5: Create application directory
 print_header "PASSO 5: Criando diretório da aplicação..."
